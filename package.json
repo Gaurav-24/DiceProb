@@ -1,0 +1,14 @@
+{
+  "name": "dice.problem",
+  "version": "1.0.0",
+  "description": "This is a dice game app",
+  "main": "index.js",
+  "scripts": {
+    "start": "node ./index.js"
+  },
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "jest": "^27.5.1"
+  }
+}
