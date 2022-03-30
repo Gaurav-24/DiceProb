@@ -3,11 +3,15 @@ const readline = require('readline').createInterface({
     output: process.stdout
 });
 let countPlayers, maxScore, playerData, turnOrder, totalScoreArray, exitPlayersCount;
+let bonusSum = 8;
+let bonusPoints = 4;
 
-const setup = () => {
+const setupPlayerCountAndMaxScore = () => {
     const args = process.argv.slice(2);
     countPlayers = parseInt(args[0]);
     maxScore = parseInt(args[1]);
+}
+const setup = () => {
     playerData = [];
     turnOrder = [];
     exitPlayersCount = 0;
@@ -25,21 +29,19 @@ const setup = () => {
 }
 
 const rollDice = () => {
-    return Math.floor((Math.random() * 6) + 1);
+    return Math.floor((Math.random() * countPlayers) + 1);
 };
-
+//[0, 4, 3] ==> 3 1
 const playerSelect = (countPlayers, turnOrder) => {
-
     let id = Math.floor(Math.random() * countPlayers);
     while (turnOrder.includes(id)) {
-        id = Math.floor(Math.random() * countPlayers);
+        id = (id + 1) % countPlayers;
     }
     return id;
 };
 
-const checkIfGameNotOver = (playerData) => {
-    const d = playerData.filter((player) => player.gameOver);
-    return d.length < playerData.length;
+const checkIfGameNotOver = (playerData, exitPlayersCount) => {
+    return exitPlayersCount < playerData.length;
 };
 
 function checkRollDiceInput(question) {
@@ -91,15 +93,30 @@ const logResult = (playerData) => {
     console.table(res);
 };
 
-const startGame = async () => {
-    setup();
-    if (!countPlayers || !maxScore) {
-        console.error("ERROR: Enter command line values of no of player and max score");
-        process.exit(1);
+const checkIfBonusApplicable = (currentPlayerData, totalScoreArray, currentPlayerIndex) => {
+    let sum = currentPlayerData.scores.reduce((sum, curr) => {
+        return sum + curr;
+    }, 0);
+    if (sum == bonusSum) {
+        totalScoreArray[currentPlayerIndex] += bonusPoints;
+        currentPlayerData.totalScore += bonusPoints;
     }
-    while (checkIfGameNotOver(playerData)) {
+}
+
+const startGame = async () => {
+    setupPlayerCountAndMaxScore();
+    while (!countPlayers) {
+        console.log("Incorrect values for Player count");
+        countPlayers = parseInt(await checkRollDiceInput("Enter player count"));
+    }
+    while (!maxScore) {
+        console.log("Incorrect values for Max Score!!");
+        maxScore = parseInt(await checkRollDiceInput("Enter Max Score"));
+    }
+    setup();
+    while (checkIfGameNotOver(playerData, exitPlayersCount)) {
         let currentPlayerIndex = 0;
-        while ((currentPlayerIndex < countPlayers) && checkIfGameNotOver(playerData)) {
+        while ((currentPlayerIndex < countPlayers) && checkIfGameNotOver(playerData, exitPlayersCount)) {
             const currentPlayerData = playerData[currentPlayerIndex];
             if (!currentPlayerData.gameOver) {
                 console.log(`Player-${currentPlayerIndex + 1}'s Turn`);
@@ -114,12 +131,17 @@ const startGame = async () => {
                     const diceScore = rollDice();
                     console.log(`You got ${diceScore}`);
                     let prevScore = currentPlayerData.scores[currentPlayerData.scores.length - 1];
+                    if (currentPlayerData.scores.length == 3) {
+                        currentPlayerData.scores.shift();
+                    }
                     currentPlayerData.scores.push(diceScore);
                     currentPlayerData.totalScore += diceScore;
                     totalScoreArray[currentPlayerIndex] += diceScore;
+
                     if (prevScore === 1 && diceScore === 1) {
                         currentPlayerData.turnAllowed = false;
                     }
+                    checkIfBonusApplicable(currentPlayerData, totalScoreArray, currentPlayerIndex);
                     if (currentPlayerData.totalScore >= maxScore) {
                         currentPlayerData.turnAllowed = false;
                         currentPlayerData.gameOver = true;
@@ -145,4 +167,9 @@ const startGame = async () => {
     process.exit(0);
 };
 
-startGame();
+setTimeout(() => {
+    startGame();
+}, 4000);
+//6
+//[0, 1, 2, [3], 4, 5] exit player = 5, total = 6
+//0-> 1-> ,2-> , 3->, 4-> , 5->
